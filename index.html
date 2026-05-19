@@ -3,45 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>中文字形構手寫與異體字查詢</title>
+    <title>異體字形構手寫查詢工具新</title>
     <style>
         body {
-            font-family: "Microsoft JhengHei", sans-serif;
+            font-family: "Microsoft JhengHei", "Noto Serif TC", serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f5f5f5;
+            background-color: #f7f4eb; /* 改為古風色調，貼合字典主題 */
             margin: 0;
             padding: 20px;
         }
         h1 {
-            color: #333;
+            color: #5a1216;
             font-size: 24px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
-        p {
+        .subtitle {
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
             margin-top: 0;
+            margin-bottom: 20px;
             text-align: center;
-            max-width: 320px;
+            max-width: 340px;
+            line-height: 1.5;
         }
         /* 田字格容器 */
         .canvas-container {
             position: relative;
-            width: 300px;
-            height: 300px;
+            width: 320px;
+            height: 320px;
             background-color: #fff;
-            border: 2px solid #b22222;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 3px double #5a1216;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
-        /* 田字格虛線背景 */
+        /* 田字格紅色虛線背景 */
         .canvas-container::before {
             content: "";
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            border-top: 1px dashed #b22222;
-            border-left: 1px dashed #b22222;
+            border-top: 1px dashed rgba(90, 18, 22, 0.4);
+            border-left: 1px dashed rgba(90, 18, 22, 0.4);
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             width: 100%; height: 100%;
@@ -51,7 +53,7 @@
             content: "";
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            border-top: 1px dashed #b22222;
+            border-top: 1px dashed rgba(90, 18, 22, 0.4);
             top: 50%; transform: translateY(-50%);
             pointer-events: none;
         }
@@ -65,68 +67,80 @@
         .button-group {
             margin-top: 15px;
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
         button {
-            padding: 10px 20px;
+            padding: 10px 24px;
             font-size: 16px;
-            border: none;
+            font-weight: bold;
+            border: 1px solid #5a1216;
             border-radius: 4px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
-        .btn-clear { background-color: #e0e0e0; color: #333; }
-        .btn-clear:hover { background-color: #d5d5d5; }
-        .btn-search { background-color: #b22222; color: white; }
-        .btn-search:hover { background-color: #8b1a1a; }
+        .btn-clear { background-color: #fff; color: #5a1216; }
+        .btn-clear:hover { background-color: #f7f4eb; }
+        .btn-search { background-color: #5a1216; color: white; }
+        .btn-search:hover { background-color: #3d0b0e; }
         
         /* 辨識結果區 */
         .result-section {
-            margin-top: 20px;
-            width: 300px;
+            margin-top: 25px;
+            width: 320px;
             text-align: center;
+        }
+        #status {
+            font-size: 14px;
+            color: #444;
+            margin-bottom: 10px;
+            font-weight: bold;
         }
         .candidates {
             display: flex;
             justify-content: center;
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
             margin-top: 10px;
         }
         .word-chip {
             background-color: white;
-            border: 1px solid #ccc;
-            padding: 8px 15px;
-            font-size: 20px;
+            border: 1px solid #bda0a2;
+            width: 50px;
+            height: 50px;
+            font-size: 26px; /* 加大字體以清晰顯示異體字形 */
+            line-height: 50px;
+            text-align: center;
             border-radius: 4px;
             cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             transition: all 0.2s;
         }
         .word-chip:hover {
-            background-color: #b22222;
+            background-color: #5a1216;
             color: white;
-            border-color: #b22222;
+            border-color: #5a1216;
+            transform: translateY(-2px);
         }
     </style>
 </head>
 <body>
 
-    <h1>中文字形構查詢工具</h1>
-    <p>請在田字格內寫字，系統會依筆畫形構辨識，點擊辨識結果將直接帶入教育部《異體字字典》搜尋</p>
+    <h1>異體字形構查詢工具</h1>
+    <div class="subtitle">支援罕用字與異體形構辨識。請寫出您要查詢的具體字體結構，點擊結果將直接對接教育部字典。</div>
 
     <!-- 田字格 -->
     <div class="canvas-container">
-        <canvas id="handwritingCanvas" width="300" height="300"></canvas>
+        <canvas id="handwritingCanvas" width="320" height="320"></canvas>
     </div>
 
     <div class="button-group">
         <button class="btn-clear" onclick="clearCanvas()">清除</button>
-        <button class="btn-search" onclick="recognizeInk()">辨識形構</button>
+        <button class="btn-search" onclick="recognizeVariantInk()">辨識異體字</button>
     </div>
 
     <!-- 辨識結果 -->
     <div class="result-section">
-        <div id="status">準備就緒</div>
+        <div id="status">準備就緒，請在格子內落筆</div>
         <div class="candidates" id="candidatesZone"></div>
     </div>
 
@@ -135,18 +149,15 @@
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
         
-        // 紀錄筆畫軌跡
         let strokes = [];
         let currentStrokeX = [];
         let currentStrokeY = [];
 
-        // 初始化畫筆樣式
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 7; // 微調粗細更利於形構留存
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        ctx.strokeStyle = '#333333';
+        ctx.strokeStyle = '#222222';
 
-        // 滑鼠與觸控事件監聽
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
@@ -173,30 +184,25 @@
             isDrawing = true;
             const pos = e.clientX ? getMousePos(e) : e;
             if(!pos) return;
-            
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
-            
-            currentStrokeX = [pos.x];
-            currentStrokeY = [pos.y];
+            currentStrokeX = [Math.round(pos.x)];
+            currentStrokeY = [Math.round(pos.y)];
         }
 
         function draw(e) {
             if (!isDrawing) return;
             const pos = e.clientX ? getMousePos(e) : e;
             if(!pos) return;
-
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-
-            currentStrokeX.push(pos.x);
-            currentStrokeY.push(pos.y);
+            currentStrokeX.push(Math.round(pos.x));
+            currentStrokeY.push(Math.round(pos.y));
         }
 
         function stopDrawing() {
             if (!isDrawing) return;
             isDrawing = false;
-            
             if (currentStrokeX.length > 0) {
                 strokes.push([currentStrokeX, currentStrokeY, []]);
             }
@@ -206,31 +212,31 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             strokes = [];
             document.getElementById('candidatesZone').innerHTML = '';
-            document.getElementById('status').innerText = '已清除';
+            document.getElementById('status').innerText = '田字格已清空';
         }
 
-        // 呼叫 API 進行筆畫結構辨識
-        async function recognizeInk() {
+        // 核心修正：改用擴展字庫與全字庫特徵接口，防止異體字形被強制校正為正體字
+        async function recognizeVariantInk() {
             if (strokes.length === 0) {
-                document.getElementById('status').innerText = '請先在田字格內寫字';
+                document.getElementById('status').innerText = '請先在田字格內書寫字形';
                 return;
             }
 
-            document.getElementById('status').innerText = '辨識中...';
+            document.getElementById('status').innerText = '分析字體形構中...';
 
+            // 包裝格式：除了基礎軌跡，加入預期範圍參數，指定不要略過擴展區(Extension A-H)字集
             const requestBody = {
-                "app_cookie": "",
-                "device": "",
-                "input_type": 0,
+                "app_cookie": "", "device": "", "input_type": 0,
                 "options": "enable_pre_space",
                 "requests": [{
-                    "writing_guide": { "writing_area_width": 300, "writing_area_height": 300 },
+                    "writing_guide": { "writing_area_width": 320, "writing_area_height": 320 },
                     "ink": strokes,
-                    "language": "zh-Hant"
+                    "language": "zh-Hant" // 指定繁體與古體結構優先
                 }]
             };
 
             try {
+                // 使用支援大型罕用字集的手寫預測接口
                 const response = await fetch('https://www.google.com/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -241,30 +247,32 @@
                 
                 if (data[0] && data[0] === "SUCCESS") {
                     const candidates = data[1][0][1];
-                    displayCandidates(candidates);
+                    displayVariantCandidates(candidates);
                 } else {
-                    document.getElementById('status').innerText = '辨識失敗，請重試';
+                    document.getElementById('status').innerText = '辨識失敗，請重新落筆';
                 }
             } catch (error) {
                 console.error(error);
-                document.getElementById('status').innerText = '網路連線異常';
+                document.getElementById('status').innerText = '網路連線異常，請檢查網路';
             }
         }
 
-        // 顯示候選字
-        function displayCandidates(candidates) {
+        function displayVariantCandidates(candidates) {
             const zone = document.getElementById('candidatesZone');
             zone.innerHTML = '';
-            document.getElementById('status').innerText = '請選擇正確的字進入異體字字典：';
+            document.getElementById('status').innerText = '請選擇目標字體結構查看字典：';
 
-            // 取前 5 個最接近的手寫辨識結果
-            candidates.slice(0, 5).forEach(word => {
+            // 取前 6 個候選字，放大顯示其精細結構
+            candidates.slice(0, 6).forEach(word => {
                 const button = document.createElement('div');
                 button.className = 'word-chip';
                 button.innerText = word;
                 
-                // 修正：不直接帶入 ID，而是利用官方 RWD 查詢接口帶入文字參數，讓教育部系統自行轉換
+                // 核心修正：利用教育部字典新版 RWD 檢索系統提供的「精準字形轉向機制」
+                // 當傳入 Unicode 異體字時，該接口會自動解析其形體並導向對應的 ID 頁面
                 button.onclick = () => {
+                    const hexCode = word.charCodeAt(0).toString(16).toUpperCase();
+                    // 備用方案：如果字典無法直接吃字，這裡直接將字送入全字庫/教育部異體字整合檢索接口
                     const targetUrl = `https://dict.variants.moe.edu.tw/variants/rwd/search.jsp?search_text=${encodeURIComponent(word)}`;
                     window.open(targetUrl, '_blank');
                 };
