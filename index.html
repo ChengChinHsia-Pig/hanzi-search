@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中文字形構手寫與異體字查詢</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            font-size: 14px;
+            margin-top: 0;
+        }
+        /* 田字格容器 */
+        .canvas-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            background-color: #fff;
+            border: 2px solid #b22222;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        /* 田字格虛線背景 */
+        .canvas-container::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-top: 1px dashed #b22222;
+            border-left: 1px dashed #b22222;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        .canvas-container::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border-top: 1px dashed #b22222;
+            top: 50%; transform: translateY(-50%);
+            pointer-events: none;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+            z-index: 10;
+        }
+        .button-group {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-clear { background-color: #e0e0e0; color: #333; }
+        .btn-clear:hover { background-color: #d5d5d5; }
+        .btn-search { background-color: #b22222; color: white; }
+        .btn-search:hover { background-color: #8b1a1a; }
+        
+        /* 辨識結果區 */
+        .result-section {
+            margin-top: 20px;
+            width: 300px;
+            text-align: center;
+        }
+        .candidates {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .word-chip {
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 8px 15px;
+            font-size: 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .word-chip:hover {
+            background-color: #b22222;
+            color: white;
+            border-color: #b22222;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>中文字形構查詢工具</h1>
+    <p>請在下方田字格內寫字，系統將依筆畫結構辨識並提供異體字字典連結</p>
+
+    <!-- 田字格 -->
+    <div class="canvas-container">
+        <canvas id="handwritingCanvas" width="300" height="300"></canvas>
+    </div>
+
+    <div class="button-group">
+        <button class="btn-clear" onclick="clearCanvas()">清除</button>
+        <button class="btn-search" onclick="recognizeInk()">辨識形構</button>
+    </div>
+
+    <!-- 辨識結果 -->
+    <div class="result-section">
+        <div id="status">準備就緒</div>
+        <div class="candidates" id="candidatesZone"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('handwritingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        
+        // 紀錄筆畫軌跡 (格式符合 Google Input Tools API 要求)
+        let strokes = [];
+        let currentStrokeX = [];
+        let currentStrokeY = [];
+
+        // 初始化畫筆樣式
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#333333';
+
+        // 滑鼠與觸控事件監聽
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(getTouchPos(e)); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(getTouchPos(e)); });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        function getTouchPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches.length > 0) {
+                return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+            }
+            return null;
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = e.clientX ? getMousePos(e) : e;
+            if(!pos) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            
+            currentStrokeX = [pos.x];
+            currentStrokeY = [pos.y];
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = e.clientX ? getMousePos(e) : e;
+            if(!pos) return;
+
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+
+            currentStrokeX.push(pos.x);
+            currentStrokeY.push(pos.y);
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            
+            // 將當前筆畫壓入總軌跡中
+            if (currentStrokeX.length > 0) {
+                strokes.push([currentStrokeX, currentStrokeY, []]);
+            }
+        }
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            strokes = [];
+            document.getElementById('candidatesZone').innerHTML = '';
+            document.getElementById('status').innerText = '已清除';
+        }
+
+        // 呼叫 API 進行筆畫結構辨識
+        async function recognizeInk() {
+            if (strokes.length === 0) {
+                document.getElementById('status').innerText = '請先在田字格內寫字';
+                return;
+            }
+
+            document.getElementById('status').innerText = '辨識中...';
+
+            const requestBody = {
+                "app_cookie": "",
+                "device": "",
+                "input_type": 0,
+                "options": "enable_pre_space",
+                "requests": [{
+                    "writing_guide": { "writing_area_width": 300, "writing_area_height": 300 },
+                    "ink": strokes,
+                    "language": "zh-Hant"
+                }]
+            };
+
+            try {
+                // 使用 Google 輸入法的手寫辨識 API
+                const response = await fetch('https://www.google.com/inputtools/request?ime=handwriting&app=mobilesearch&cs=1&oe=UTF-8', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+                
+                if (data[0] && data[0] === "SUCCESS") {
+                    const candidates = data[1][0][1];
+                    displayCandidates(candidates);
+                } else {
+                    document.getElementById('status').innerText = '辨識失敗，請重試';
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status').innerText = '網路連線異常';
+            }
+        }
+
+        // 顯示候選字
+        function displayCandidates(candidates) {
+            const zone = document.getElementById('candidatesZone');
+            zone.innerHTML = '';
+            document.getElementById('status').innerText = '請選擇正確的字進入異體字字典：';
+
+            // 取前 5 個最像的辨識結果
+            candidates.slice(0, 5).forEach(word => {
+                const button = document.createElement('div');
+                button.className = 'word-chip';
+                button.innerText = word;
+                button.onclick = () => window.open(`https://dict.variants.moe.edu.tw/variants/rwd/search.jsp?search_text=${encodeURIComponent(word)}`, '_blank');
+                zone.appendChild(button);
+            });
+        }
+    </script>
+</body>
+</html>
